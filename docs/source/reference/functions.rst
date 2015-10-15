@@ -30,6 +30,7 @@ Array commputation functions
 
 Array manipulation functions
 ----------------------------
+.. autofunction:: broadcast
 .. autofunction:: concat
 .. autofunction:: copy
 .. autofunction:: identity
