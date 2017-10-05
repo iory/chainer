@@ -134,6 +134,9 @@ class Link(object):
         self._device_id = None
         self._within_init_scope = False
         self.name = None
+        self._backward_hooks = collections.OrderedDict()
+        self._forward_hooks = collections.OrderedDict()
+        self._forward_pre_hooks = collections.OrderedDict()
 
         for name, value in six.iteritems(params):
             # Note: deprecation warning will be raised in add_param
@@ -205,6 +208,45 @@ class Link(object):
         self._params.discard(name)
         self._persistent.discard(name)
         super(Link, self).__delattr__(name)
+
+    def __call__(self, x):
+        for hook in self._forward_pre_hooks.values():
+            hook(self, x)
+        result = self.call(x)
+        for hook in self._forward_hooks.values():
+            hook_result = hook(self, x, result)
+            if hook_result is not None:
+                raise RuntimeError(
+                    "forward hooks should never return any values, but '{}'"
+                    "didn't return None".format(hook))
+        for hook in self._backward_hooks.values():
+            hook(self, x)
+        return result
+
+    def call(self):
+        raise NotImplementedError
+
+    def _check_hook(self, hook, name=None):
+        if not callable(hook):
+            raise TypeError('hook function is not callable')
+
+        if name is None:
+            name = hook.name
+        if name in self._forward_pre_hooks:
+            raise KeyError('hook %s already exists' % name)
+        return name
+
+    def add_forward_pre_hook(self, hook, name=None):
+        name = self._check_hook(hook, name)
+        self._forward_pre_hooks[name] = hook
+
+    def add_forward_hook(self, hook, name=None):
+        name = self._check_hook(hook, name)
+        self._forward_hooks[name] = hook
+
+    def add_backward_hook(self, hook, name=None):
+        name = self._check_hook(hook, name)
+        self._backward_hooks[name] = hook
 
     def add_param(self, name, shape=None, dtype=numpy.float32,
                   initializer=None):

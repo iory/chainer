@@ -112,7 +112,7 @@ class Linear(link.Link):
     def _initialize_params(self, in_size):
         self.W.initialize((self.out_size, in_size))
 
-    def __call__(self, x):
+    def call(self, x):
         """Applies the linear layer.
 
         Args:
